@@ -33,8 +33,19 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,カタログ・スキーマの設定
+# Unity Catalog の カタログ名・スキーマ名をウィジェットで設定します。
+# 実行前に適切な値に変更してください。
+dbutils.widgets.text("catalog", "main", "Catalog")
+dbutils.widgets.text("schema_stock", "stock_market_historical_data", "Stock Schema")
+
+catalog      = dbutils.widgets.get("catalog")
+schema_stock = dbutils.widgets.get("schema_stock")
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC 
-# MAGIC SELECT * FROM hive_metastore.stock_market_historical_data.us_closing_100 VERSION AS OF 0
+# MAGIC SELECT * FROM ${catalog}.${schema_stock}.us_closing_100 VERSION AS OF 0
 
 # COMMAND ----------

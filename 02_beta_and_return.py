@@ -18,6 +18,19 @@ import dlt
 
 # COMMAND ----------
 
+# DBTITLE 1,カタログ・スキーマの設定
+# Unity Catalog の カタログ名・スキーマ名をウィジェットで設定します。
+# DLT パイプライン設定の "Configuration" で以下のキーを定義してください。
+#   catalog       : 対象カタログ名（例: main）
+#   schema_stock  : 株式データのスキーマ名（例: stock_market_historical_data）
+#   schema_indices: 指数データのスキーマ名（例: indices_historical_data）
+import os
+catalog        = spark.conf.get("catalog",        "main")
+schema_stock   = spark.conf.get("schema_stock",   "stock_market_historical_data")
+schema_indices = spark.conf.get("schema_indices",  "indices_historical_data")
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC 
 # MAGIC # ステップ1: ブロンズ層 - 生データ
@@ -28,7 +41,13 @@ import dlt
 
 @dlt.table(name="capm_bronze")
 def capm_bronze():
-  capm_bronze_df = spark.sql("SELECT * FROM (SELECT to_date(Date, 'yyyy-MM-dd') as DateSP500, Close as SP500 FROM hive_metastore.indices_historical_data.sp_500) as idxs INNER JOIN (SELECT * FROM hive_metastore.stock_market_historical_data.us_closing_100) as equities ON idxs.DateSP500 = equities.Date;").drop('DateSP500').drop('Date')
+  capm_bronze_df = spark.sql(
+    f"SELECT * FROM "
+    f"(SELECT to_date(Date, 'yyyy-MM-dd') as DateSP500, Close as SP500 FROM {catalog}.{schema_indices}.sp_500) as idxs "
+    f"INNER JOIN "
+    f"(SELECT * FROM {catalog}.{schema_stock}.us_closing_100) as equities "
+    f"ON idxs.DateSP500 = equities.Date;"
+  ).drop('DateSP500').drop('Date')
   return capm_bronze_df
 
 # COMMAND ----------

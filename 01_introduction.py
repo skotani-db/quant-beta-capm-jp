@@ -58,7 +58,7 @@
 # MAGIC 5. **スケール**: [Photon](https://www.databricks.com/product/photon)によって強化された[Databricks Runtime](https://docs.databricks.com/runtime/mlruntime.html)のバースト処理能力は、これらの非常に計算負荷の高い計算を非常に高速かつコスト効率よく実行できます。
 # MAGIC 6. **データパイプライン**: データ品質を確認し、[制約](https://docs.databricks.com/delta/delta-constraints.html)を適用し、実行をスケジュールし、実行を監視できる堅牢なデータパイプラインでプロセス全体をオーケストレーションすることは、ソリューション全体を本番化するために重要です。Databricks [Delta Live Tables](https://www.databricks.com/product/delta-live-tables)（DLT）は、Delta Lake上で高品質なデータを提供する信頼性の高いデータパイプラインの構築と管理を容易にします。DLTは宣言的パイプライン開発、自動データテスト、監視と回復のための詳細な可視性によってETL開発と管理を簡素化します。
 # MAGIC 7. **新規データの処理**: Databricksの[Auto Loader](https://docs.databricks.com/ingestion/auto-loader/index.html)は、追加設定なしでクラウドストレージに到着する新しいデータファイルをインクリメンタルかつ効率的に処理します。\\(\beta{_i} \\) と \\(E(R{_e}) \\) を正確に測定するためには、頻繁に再計算する必要があります。
-# MAGIC 8. **可視化**: 各社のベータと期待収益率を計算した後、Databricks SQLダッシュボードで全企業情報を可視化します。[Databricks SQL](https://www.databricks.com/product/databricks-sql)（DB SQL）はDatabricks Lakehouseプラットフォーム上のサーバーレスデータウェアハウスで、最大12倍優れたコストパフォーマンス、統一ガバナンスモデル、オープンフォーマットとAPI、お好みのツールで、ロックインなしにすべてのSQLおよびBIアプリケーションを大規模に実行できます。
+# MAGIC 8. **可視化**: 各社のベータと期待収益率を計算した後、Databricks SQLダッシュボードで全企業情報を可視化します。[Databricks SQL](https://www.databricks.com/product/databricks-sql)（DB SQL）はDatabricks Lakehouseプラットフォームのサーバーレスデータウェアハウスで、最大12倍優れたコストパフォーマンス、統一ガバナンスモデル、オープンフォーマットとAPI、お好みのツールで、ロックインなしにすべてのSQLおよびBIアプリケーションを大規模に実行できます。
 
 # COMMAND ----------
 
@@ -71,30 +71,47 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,カタログ・スキーマの設定
+# Unity Catalog の カタログ名・スキーマ名をウィジェットで設定します。
+# 実行前に適切な値に変更してください。
+dbutils.widgets.text("catalog", "main", "Catalog")
+dbutils.widgets.text("schema_stock", "stock_market_historical_data", "Stock Schema")
+dbutils.widgets.text("schema_indices", "indices_historical_data", "Indices Schema")
+
+catalog       = dbutils.widgets.get("catalog")
+schema_stock  = dbutils.widgets.get("schema_stock")
+schema_indices = dbutils.widgets.get("schema_indices")
+
+# COMMAND ----------
+
 # DBTITLE 1,ソースデータ読み込み用テーブルの作成
 # MAGIC %sql
-# MAGIC CREATE DATABASE IF NOT EXISTS hive_metastore.stock_market_historical_data;
+# MAGIC CREATE CATALOG IF NOT EXISTS ${catalog};
 # MAGIC 
-# MAGIC CREATE DATABASE IF NOT EXISTS hive_metastore.indices_historical_data;
+# MAGIC CREATE SCHEMA IF NOT EXISTS ${catalog}.${schema_stock};
 # MAGIC 
-# MAGIC DROP TABLE IF EXISTS hive_metastore.stock_market_historical_data.us_closing_100;
+# MAGIC CREATE SCHEMA IF NOT EXISTS ${catalog}.${schema_indices};
 # MAGIC 
-# MAGIC CREATE TABLE hive_metastore.stock_market_historical_data.us_closing_100
-# MAGIC LOCATION 's3a://db-gtm-industry-solutions/data/fsi/capm/us_closing_100/';
+# MAGIC DROP TABLE IF EXISTS ${catalog}.${schema_stock}.us_closing_100;
 # MAGIC 
-# MAGIC DROP TABLE IF EXISTS hive_metastore.indices_historical_data.sp_500;
+# MAGIC CREATE TABLE ${catalog}.${schema_stock}.us_closing_100
+# MAGIC USING DELTA
+# MAGIC AS SELECT * FROM delta.`s3a://db-gtm-industry-solutions/data/fsi/capm/us_closing_100/`;
 # MAGIC 
-# MAGIC CREATE TABLE hive_metastore.indices_historical_data.sp_500
-# MAGIC LOCATION 's3a://db-gtm-industry-solutions/data/fsi/capm/sp_500/';
+# MAGIC DROP TABLE IF EXISTS ${catalog}.${schema_indices}.sp_500;
+# MAGIC 
+# MAGIC CREATE TABLE ${catalog}.${schema_indices}.sp_500
+# MAGIC USING DELTA
+# MAGIC AS SELECT * FROM delta.`s3a://db-gtm-industry-solutions/data/fsi/capm/sp_500/`;
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SELECT * FROM hive_metastore.stock_market_historical_data.us_closing_100
+# MAGIC SELECT * FROM ${catalog}.${schema_stock}.us_closing_100
 
 # COMMAND ----------
 
-closing_prices_df = spark.sql('select * from hive_metastore.stock_market_historical_data.us_closing_100')
+closing_prices_df = spark.sql(f'select * from {catalog}.{schema_stock}.us_closing_100')
 
 # COMMAND ----------
 
